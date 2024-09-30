@@ -701,6 +701,7 @@ void ecriture_csv(stat_tris *les_tris){
 
         k++;
     }
+    fclose(fichier);
 }
 
 void affichage_gnu(stat_tris *les_tris){
@@ -798,6 +799,7 @@ void ecriture_gnu(stat_tris *les_tris){
 
         k++;
     }
+    fclose(fichier);
 }
 
 void affichage_config_gnu(stat_tris *les_tris){
@@ -851,6 +853,7 @@ void ecriture_config_gnu(stat_tris *les_tris){
 
     fprintf(fichier, "# l'instruction suivante attend que l'utilisateur appuie sur une touche pour quitter l'application\n"\
     "pause -1\n");
+    fclose(fichier);
     return;
 }
 
