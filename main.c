@@ -46,7 +46,8 @@ struct tas{
 typedef struct tas tas;
 
 void quicksort(liste *l, int start, int end, stat *s); 
-
+int leonardo_numbers(int n);
+void heapify(liste *l, int start, int end, stat *s);
 
 
 
@@ -475,6 +476,136 @@ void quicksort(liste *l, int start, int end, stat *s){
     quicksort(l, pivot+1, end, s);
 }
 
+void combsort(liste *l, stat *s){
+    int intervalle = l->taille;
+
+    int echange = True;
+    while(intervalle > 1 || echange == True){
+        intervalle = intervalle/1.3;
+        if(intervalle < 1){
+            intervalle = 1;
+        }
+
+        int i = 0;
+        echange = False;
+        while(i < (l->taille - intervalle)){
+            s->nb_compare++;
+            if(l->liste_entier[i] > l->liste_entier[i + intervalle]){
+                swap(&l->liste_entier[i], &l->liste_entier[i + intervalle]);
+                s->nb_permutation++;
+                echange = True;
+            }
+            i++;
+        }
+    }
+}
+
+
+// VARIABLES POUR SHELL SORT ! A NE PAS SUPPRIMER
+int gaps[] = {701, 301, 132, 57, 23, 10, 4, 1};
+int taille_gaps = 8;
+
+void mi_shellsort_ou(liste *l, stat *s){
+    int n = l->taille;
+
+    for(int k = 0; k < taille_gaps; k++){
+        int m = gaps[k];
+
+        for(int r = 0; r < m; r++){
+            for(int i = r+m; i < n; i += m){
+                int j = i;
+                int x = l->liste_entier[i];
+                while(j > r && l->liste_entier[j-m] > x){
+                    s->nb_compare++;
+                    s->nb_permutation++;
+                    l->liste_entier[j] = l->liste_entier[j-m];
+                    j -= m;
+                }
+                l->liste_entier[j] = x;
+            }
+        }
+    }
+}
+
+// Implementation provenant de : https://www.geeksforgeeks.org/introduction-to-smooth-sort/ Adaptée de la version python3
+int leonardo_numbers(int n){
+    if(n <= 1) return 1;
+    return leonardo_numbers(n-1) + leonardo_numbers(n-2) + 1;
+}
+
+void heapify(liste *l, int start, int end, stat *s){
+    int i = start;
+    int j = 0;
+    int k = 0;
+
+    while(k < end - start + 1){
+        if(k & 0xAAAAAAAA){
+            j++;
+            i >>= 1;
+        }else{
+            i += j;
+            j >>= 1;
+        }
+
+        k++;
+    }
+
+    while(i > 0){
+        j >>= 1;
+        k = i+j;
+        while(k < end){
+            s->nb_compare++;
+            if(l->liste_entier[k] > l->liste_entier[k-i]){
+                break;
+            }
+            swap(&l->liste_entier[k], &l->liste_entier[k-i]);
+            k += i;
+        }
+        i = j;
+    }
+}
+
+void smoothsort(liste *l, stat *s){
+    int n = l->taille;
+
+    int p = n-1;
+    int q = p;
+    int r = 0;
+    while(p > 0){
+        if((r & 0x03) == 0){
+            heapify(l, r, q, s);
+        }
+
+        int lnr = leonardo_numbers(r);
+        if(lnr == p){
+            r++;
+        }
+        else{
+            r--;
+            q = q - lnr;
+            heapify(l, r, q, s);
+            q = r - 1;
+            r++;
+        }
+
+        swap(&l->liste_entier[0], &l->liste_entier[p]);
+        s->nb_permutation++;
+        p--;
+    }
+
+    for(int i = 0; i < n-1; i++){
+        int j = i+1;
+        while(j > 0 && l->liste_entier[j] < l->liste_entier[j-1]){
+            s->nb_compare++;
+            s->nb_permutation++;
+            swap(&l->liste_entier[j], &l->liste_entier[j-1]);
+
+            j--;
+        }
+    }
+}
+
+
 void affichage_csv(stat_tris *les_tris){
     int k = 0;
     int nb_tris = les_tris->taille;
@@ -756,6 +887,24 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
         exit(EXIT_FAILURE);
     }
 
+    stat **peignes = calloc(nb_listes * nb_expes, sizeof(stat *));
+    if (!peignes) {
+        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats peignes\n");
+        exit(EXIT_FAILURE);
+    }
+
+    stat **shells = calloc(nb_listes * nb_expes, sizeof(stat *));
+    if (!shells) {
+        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats shells\n");
+        exit(EXIT_FAILURE);
+    }
+
+    stat **smooths = calloc(nb_listes * nb_expes, sizeof(stat *));
+    if (!smooths) {
+        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats smoothsort\n");
+        exit(EXIT_FAILURE);
+    }
+
     for(int i = 0; i < nb_expes * nb_listes; i++){
         selections[i] = init_stat();
         insertions[i] = init_stat();
@@ -763,6 +912,9 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
         fusions[i] = init_stat();
         quicksorts[i] = init_stat();
         tass[i] = init_stat();
+        peignes[i] = init_stat();
+        shells[i] = init_stat();
+        smooths[i] = init_stat();
     }
 
 
@@ -824,6 +976,33 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
     sgt->stats = tass;
     sgt->taille = nb_listes * nb_expes;
 
+    stat_groupe *sgp = calloc(1, sizeof(stat_groupe));
+    if (!sgp) {
+        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stats Peigne\n");
+        exit(EXIT_FAILURE);
+    }
+    sgp->nom = "Tri à Peigne";
+    sgp->stats = tass;
+    sgp->taille = nb_listes * nb_expes;
+
+    stat_groupe *sgsh = calloc(1, sizeof(stat_groupe));
+    if (!sgsh) {
+        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stats Shells\n");
+        exit(EXIT_FAILURE);
+    }
+    sgsh->nom = "Tri de Shell";
+    sgsh->stats = tass;
+    sgsh->taille = nb_listes * nb_expes;
+
+    stat_groupe *sgsm = calloc(1, sizeof(stat_groupe));
+    if (!sgsm) {
+        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stats SmoothSort\n");
+        exit(EXIT_FAILURE);
+    }
+    sgsm->nom = "Tri Lisse (SmoothSort)";
+    sgsm->stats = tass;
+    sgsm->taille = nb_listes * nb_expes;
+
 
     stat_tris *sttris = calloc(1, sizeof(stat_tris));
     if (!sttris) {
@@ -831,7 +1010,7 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
         exit(EXIT_FAILURE);
     }
 
-    sttris->groupes = calloc(6, sizeof(stat_groupe *));
+    sttris->groupes = calloc(9, sizeof(stat_groupe *));
     if (!sttris->groupes) {
         fprintf(stderr, "Erreur d'allocation memoire pour la liste des groupes\n");
         exit(EXIT_FAILURE);
@@ -842,7 +1021,10 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
     sttris->groupes[3] = sgf;
     sttris->groupes[4] = sgq;
     sttris->groupes[5] = sgt;
-    sttris->taille = 6;
+    sttris->groupes[6] = sgp;
+    sttris->groupes[7] = sgsh;
+    sttris->groupes[8] = sgsm;
+    sttris->taille = 9;
 
 
     int index = 0;
@@ -881,6 +1063,21 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
             freel(tri_par_tas(lc, tass[index]));
             freel(lc);
 
+            lc = copier_liste(l);
+            peignes[index]->taille_liste = lc->taille;
+            combsort(lc, peignes[index]);
+            freel(lc);
+
+            lc = copier_liste(l);
+            shells[index]->taille_liste = lc->taille;
+            mi_shellsort_ou(lc, shells[index]);
+            freel(lc);
+
+            lc = copier_liste(l);
+            smooths[index]->taille_liste = lc->taille;
+            smoothsort(lc, smooths[index]);
+            freel(lc);
+
             index++;
             freel(l);
         }
@@ -902,6 +1099,9 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
         free(fusions[i]);
         free(quicksorts[i]);
         free(tass[i]);
+        free(peignes[i]);
+        free(shells[i]);
+        free(smooths[i]);
     }
 
     free(selections);
@@ -910,6 +1110,9 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
     free(fusions);
     free(quicksorts);
     free(tass);
+    free(peignes);
+    free(shells);
+    free(smooths);
 
     free(sgs);
     free(sgi);
@@ -917,6 +1120,9 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
     free(sgf);
     free(sgq);
     free(sgt);
+    free(sgp);
+    free(sgsh);
+    free(sgsm);
 
     free(sttris->groupes);
     free(sttris);
@@ -929,31 +1135,32 @@ int main(int argc, char **argv){
     if(argc >= 2){
         choix = atoi(argv[1]);
     }
-
-    int taille_min = 100;
-    int nb_listes = 10;
-    int nb_expes = 20;
     
     switch (choix) {
         case 1:
-            test(taille_min, nb_listes, nb_expes, liste_entier);
+            test(100, 10, 20, liste_entier);
             break;
         case 2:
-            test(taille_min, nb_listes, nb_expes, presque_triee);
+            test(100, 10, 20, presque_triee);
             break;
         case 3:
-            test(taille_min, nb_listes, nb_expes, triee);
+            test(100, 10, 20, triee);
             break;
         case 4:
-            test(taille_min, nb_listes, nb_expes, bcp_doublons);
+            test(100, 10, 20, bcp_doublons);
             break;
         case 5:
-            test(taille_min, nb_listes, nb_expes, reverse);
+            test(100, 10, 20, reverse);
             break;
         default:
-            test(taille_min, nb_listes, nb_expes, liste_entier);
+            test(100, 10, 20, liste_entier);
             break;
     }
-    
+
+    // liste *l = liste_entier(100);
+    // smoothsort(l, init_stat());
+    // printf("%s\n", est_trie(l) == True ? "TRIEE" : "NON TRIEE");
+    // afficher_liste(l);
+
     return EXIT_SUCCESS;
 }
