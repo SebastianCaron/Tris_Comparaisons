@@ -98,6 +98,20 @@ liste* copier_liste(liste *original) {
     return copie;
 }
 
+char *copy_string(char *str){
+    int taille = 0;
+    while(str[taille] != '\0'){
+        taille++;
+    }
+    char *nstr = calloc(taille+1, sizeof(char));
+    int i = 0;
+    while(i < taille+1){
+        nstr[i] = str[i];
+        i++;
+    }
+    return nstr;
+}
+
 void afficher_liste(liste *l){
     printf("[ ");
     for(int i = 0; i < l->taille-1; i++){
@@ -327,10 +341,13 @@ liste *tri_fusion(liste *l, stat *s){
     int i = 0;
     int j = 0;
     int c = 0;
+
+    // Si on considre qu'il y a permutation seulement si c'est un élément de droite qui est mit avant celui de gauche
+    // Sinon il faut retirer les //
     while(i < nl1->taille && j < nl2->taille){
         s->nb_compare++;
         if(nl1->liste_entier[i] < nl2->liste_entier[j]){
-            s->nb_permutation++;
+            // s->nb_permutation++;
             nlfinal->liste_entier[c] = nl1->liste_entier[i];
             i++;
         }
@@ -343,14 +360,14 @@ liste *tri_fusion(liste *l, stat *s){
     }
 
     while(i < nl1->taille){
-        s->nb_permutation++;
+        // s->nb_permutation++;
         nlfinal->liste_entier[c] = nl1->liste_entier[i];
         i++;
         c++;
     }
 
     while(j < nl2->taille){
-        s->nb_permutation++;
+        // s->nb_permutation++;
         nlfinal->liste_entier[c] = nl2->liste_entier[j];
         j++;
         c++;
@@ -364,6 +381,11 @@ liste *tri_fusion(liste *l, stat *s){
     free(nl2->liste_entier);
     free(nl2);
     return nlfinal;
+}
+
+void w_tri_fusion(liste *l, stat *s){
+    liste *lres = tri_fusion(l, s);
+    freel(lres);
 }
 
 void ajouter_valeur(tas *t, int x, stat *s){
@@ -449,6 +471,11 @@ liste *tri_par_tas(liste *l, stat *s){
     return l2;
 }
 
+void w_tri_par_tas(liste *l, stat *s){
+    liste *lres = tri_par_tas(l, s);
+    freel(lres);
+}
+
 int partitionner(liste *l, int start, int end, int pivot, stat *s){
     s->nb_permutation++;
     swap(&(l->liste_entier[pivot]), &(l->liste_entier[end]));
@@ -474,6 +501,10 @@ void quicksort(liste *l, int start, int end, stat *s){
     pivot = partitionner(l, start, end, pivot, s);
     quicksort(l, start, pivot-1, s);
     quicksort(l, pivot+1, end, s);
+}
+
+void w_quicksort(liste *l, stat *s){
+    quicksort(l, 0, l->taille-1, s);
 }
 
 void combsort(liste *l, stat *s){
@@ -528,36 +559,41 @@ void mi_shellsort_ou(liste *l, stat *s){
 }
 
 // Implementation provenant de : https://www.geeksforgeeks.org/introduction-to-smooth-sort/ Adaptée de la version python3
-int leonardo_numbers(int n){
+// Tri par tas avec arbres de Leonardo
+// https://youtu.be/FntVy6lPVyo?si=AOsEEUIU6ghckYe1&t=1149
+
+int leonardo_numbers(int n) {
     if(n <= 1) return 1;
     return leonardo_numbers(n-1) + leonardo_numbers(n-2) + 1;
 }
 
-void heapify(liste *l, int start, int end, stat *s){
+// Reorganise la liste pour respecter la structure d'un tas
+void heapify(liste *l, int start, int end, stat *s) {
     int i = start;
-    int j = 0;
+    int j = 0;     // pos dans l'arbre
     int k = 0;
 
-    while(k < end - start + 1){
-        if(k & 0xAAAAAAAA){
+    while(k < end - start + 1) {
+        if(k & 0xAAAAAAAA) { // ????
             j++;
             i >>= 1;
-        }else{
+        } else {
             i += j;
             j >>= 1;
         }
-
         k++;
     }
 
-    while(i > 0){
+    while(i > 0) {
         j >>= 1;
-        k = i+j;
-        while(k < end){
+        k = i + j; // Descend dans le tas
+
+        while(k < end) {
             s->nb_compare++;
-            if(l->liste_entier[k] > l->liste_entier[k-i]){
+            if(l->liste_entier[k] > l->liste_entier[k-i]) { // respecte la structure d'un tas ?
                 break;
             }
+            // Sinon on swap
             swap(&l->liste_entier[k], &l->liste_entier[k-i]);
             k += i;
         }
@@ -565,22 +601,23 @@ void heapify(liste *l, int start, int end, stat *s){
     }
 }
 
-void smoothsort(liste *l, stat *s){
+void smoothsort(liste *l, stat *s) {
     int n = l->taille;
-
     int p = n-1;
     int q = p;
     int r = 0;
-    while(p > 0){
-        if((r & 0x03) == 0){
-            heapify(l, r, q, s);
+
+    while(p > 0) {
+        
+        if((r & 0x03) == 0) { // r%4 == 0
+            heapify(l, r, q, s);  // On transforme la partie de la liste en tas
         }
 
         int lnr = leonardo_numbers(r);
-        if(lnr == p){
+
+        if(lnr == p) {
             r++;
-        }
-        else{
+        } else {
             r--;
             q = q - lnr;
             heapify(l, r, q, s);
@@ -588,29 +625,29 @@ void smoothsort(liste *l, stat *s){
             r++;
         }
 
+        // Meme fonctionnement que le tri par tas
         swap(&l->liste_entier[0], &l->liste_entier[p]);
         s->nb_permutation++;
         p--;
     }
 
-    for(int i = 0; i < n-1; i++){
+    // Tri par insertion
+    for(int i = 0; i < n-1; i++) {
         int j = i+1;
-        while(j > 0 && l->liste_entier[j] < l->liste_entier[j-1]){
+        while(j > 0 && l->liste_entier[j] < l->liste_entier[j-1]) {
             s->nb_compare++;
             s->nb_permutation++;
             swap(&l->liste_entier[j], &l->liste_entier[j-1]);
-
             j--;
         }
     }
 }
 
 
+
 void affichage_csv(stat_tris *les_tris){
     int k = 0;
     int nb_tris = les_tris->taille;
-
-    // printf("NB TRIS : %d\n", nb_tris);
 
     int est_nul = False;
     int taille_differente = False;
@@ -666,7 +703,7 @@ void ecriture_csv(stat_tris *les_tris){
 
     fprintf(fichier, "TAILLE LISTE");
     for(int i = 0; i < nb_tris; i++){
-        fprintf(fichier, ",%s", les_tris->groupes[i]->nom);
+        fprintf(fichier, ",%s", les_tris->groupes[i]->nom); // HERE
     }
     fprintf(fichier, "\n");
 
@@ -707,8 +744,6 @@ void ecriture_csv(stat_tris *les_tris){
 void affichage_gnu(stat_tris *les_tris){
     int k = 0;
     int nb_tris = les_tris->taille;
-
-    // printf("NB TRIS : %d\n", nb_tris);
 
     int est_nul = False;
     int taille_differente = False;
@@ -857,177 +892,50 @@ void ecriture_config_gnu(stat_tris *les_tris){
     return;
 }
 
-void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (int)){
+void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (int),int nb_sort_func, void (*func_ptr[])(liste *l, stat *s), char **liste_nom){
 
-    stat **selections = calloc(nb_listes * nb_expes, sizeof(stat *));
-    if (!selections) {
-        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats selections\n");
+    stat ***les_tris = calloc(nb_sort_func, sizeof(stat *));
+
+    if(!les_tris){
+        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats des tris\n");
         exit(EXIT_FAILURE);
     }
-    stat **insertions = calloc(nb_listes * nb_expes, sizeof(stat *));
-    if (!insertions) {
-        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats insertions\n");
-        exit(EXIT_FAILURE);
-    }
-    stat **bubbles = calloc(nb_listes * nb_expes, sizeof(stat *));
-    if (!bubbles) {
-        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats bubbles\n");
-        exit(EXIT_FAILURE);
-    }
-    stat **fusions = calloc(nb_listes * nb_expes, sizeof(stat *));
-    if (!fusions) {
-        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats fusions\n");
-        exit(EXIT_FAILURE);
-    }
-    stat **quicksorts = calloc(nb_listes * nb_expes, sizeof(stat *));
-    if (!quicksorts) {
-        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats quicksot\n");
-        exit(EXIT_FAILURE);
-    }
-    stat **tass = calloc(nb_listes * nb_expes, sizeof(stat *));
-    if (!tass) {
-        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats tas\n");
-        exit(EXIT_FAILURE);
-    }
-
-    stat **peignes = calloc(nb_listes * nb_expes, sizeof(stat *));
-    if (!peignes) {
-        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats peignes\n");
-        exit(EXIT_FAILURE);
-    }
-
-    stat **shells = calloc(nb_listes * nb_expes, sizeof(stat *));
-    if (!shells) {
-        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats shells\n");
-        exit(EXIT_FAILURE);
-    }
-
-    stat **smooths = calloc(nb_listes * nb_expes, sizeof(stat *));
-    if (!smooths) {
-        fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats smoothsort\n");
-        exit(EXIT_FAILURE);
-    }
-
-    for(int i = 0; i < nb_expes * nb_listes; i++){
-        selections[i] = init_stat();
-        insertions[i] = init_stat();
-        bubbles[i] = init_stat();
-        fusions[i] = init_stat();
-        quicksorts[i] = init_stat();
-        tass[i] = init_stat();
-        peignes[i] = init_stat();
-        shells[i] = init_stat();
-        smooths[i] = init_stat();
-    }
-
-
-    stat_groupe *sgs = calloc(1, sizeof(stat_groupe));
-    if (!sgs) {
-        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stat selection\n");
-        exit(EXIT_FAILURE);
-    }
-    sgs->nom = "Selection";
-    sgs->stats = selections;
-    sgs->taille = nb_listes * nb_expes;
-
-    stat_groupe *sgi = calloc(1, sizeof(stat_groupe));
-    if (!sgi) {
-        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stat insertion\n");
-        exit(EXIT_FAILURE);
-    }
-    sgi->nom = "Insertion";
-    sgi->stats = insertions;
-    sgi->taille = nb_listes * nb_expes;
-
-
-    stat_groupe *sgb = calloc(1, sizeof(stat_groupe));
-    if (!sgb) {
-        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stat bubbles\n");
-        exit(EXIT_FAILURE);
-    }
-    sgb->nom = "Bubbles";
-    sgb->stats = bubbles;
-    sgb->taille = nb_listes * nb_expes;
-
-
-    stat_groupe *sgf = calloc(1, sizeof(stat_groupe));
-    if (!sgf) {
-        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stats fuison\n");
-        exit(EXIT_FAILURE);
-    }
-    sgf->nom = "Fusion";
-    sgf->stats = fusions;
-    sgf->taille = nb_listes * nb_expes;
-
-
-    stat_groupe *sgq = calloc(1, sizeof(stat_groupe));
-    if (!sgq) {
-        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stats quicksorts\n");
-        exit(EXIT_FAILURE);
-    }
-    sgq->nom = "Quicksort";
-    sgq->stats = quicksorts;
-    sgq->taille = nb_listes * nb_expes;
-
-
-    stat_groupe *sgt = calloc(1, sizeof(stat_groupe));
-    if (!sgt) {
-        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stats Tas\n");
-        exit(EXIT_FAILURE);
-    }
-    sgt->nom = "Tas";
-    sgt->stats = tass;
-    sgt->taille = nb_listes * nb_expes;
-
-    stat_groupe *sgp = calloc(1, sizeof(stat_groupe));
-    if (!sgp) {
-        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stats Peigne\n");
-        exit(EXIT_FAILURE);
-    }
-    sgp->nom = "Tri à Peigne";
-    sgp->stats = tass;
-    sgp->taille = nb_listes * nb_expes;
-
-    stat_groupe *sgsh = calloc(1, sizeof(stat_groupe));
-    if (!sgsh) {
-        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stats Shells\n");
-        exit(EXIT_FAILURE);
-    }
-    sgsh->nom = "Tri de Shell";
-    sgsh->stats = tass;
-    sgsh->taille = nb_listes * nb_expes;
-
-    stat_groupe *sgsm = calloc(1, sizeof(stat_groupe));
-    if (!sgsm) {
-        fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stats SmoothSort\n");
-        exit(EXIT_FAILURE);
-    }
-    sgsm->nom = "Tri Lisse (SmoothSort)";
-    sgsm->stats = tass;
-    sgsm->taille = nb_listes * nb_expes;
-
 
     stat_tris *sttris = calloc(1, sizeof(stat_tris));
     if (!sttris) {
         fprintf(stderr, "Erreur d'allocation memoire pour la liste des stats des tris\n");
         exit(EXIT_FAILURE);
     }
+    sttris->taille = nb_sort_func;
 
-    sttris->groupes = calloc(9, sizeof(stat_groupe *));
+    sttris->groupes = calloc(nb_sort_func, sizeof(stat_groupe *));
     if (!sttris->groupes) {
         fprintf(stderr, "Erreur d'allocation memoire pour la liste des groupes\n");
         exit(EXIT_FAILURE);
     }
-    sttris->groupes[0] = sgs;
-    sttris->groupes[1] = sgi;
-    sttris->groupes[2] = sgb;
-    sttris->groupes[3] = sgf;
-    sttris->groupes[4] = sgq;
-    sttris->groupes[5] = sgt;
-    sttris->groupes[6] = sgp;
-    sttris->groupes[7] = sgsh;
-    sttris->groupes[8] = sgsm;
-    sttris->taille = 9;
+
+    for(int i = 0; i < nb_sort_func; i++){
+        stat **letri = calloc(nb_listes * nb_expes, sizeof(stat *));
+        if (!letri) {
+            fprintf(stderr, "Erreur d'allocation memoire pour la liste de stats %s\n", liste_nom[i]);
+            exit(EXIT_FAILURE);
+        }
+        for(int j = 0; j < nb_expes * nb_listes; j++){
+            letri[j] = init_stat();
+        }
+        les_tris[i] = letri;
+
+        stat_groupe *grp = calloc(1, sizeof(stat_groupe));
+        if (!grp) {
+            fprintf(stderr, "Erreur d'allocation memoire pour le groupe de stat %s\n", liste_nom[i]);
+            exit(EXIT_FAILURE);
+        }
+        grp->nom = liste_nom[i];
+        grp->stats = les_tris[i];
+        grp->taille = nb_listes * nb_expes;
+        sttris->groupes[i] = grp;
+    }
+
 
 
     int index = 0;
@@ -1035,51 +943,13 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
         for(int i = 0; i < nb_expes; i++){
             liste *l = generateur(j*taille_mini);
 
-            liste *lc = copier_liste(l);
-            selections[index]->taille_liste = lc->taille;
-            tri_par_selection(lc, selections[index]);
-            freel(lc);
-
-
-            lc = copier_liste(l);
-            insertions[index]->taille_liste = lc->taille;
-            tri_par_insertion(lc, insertions[index]);
-            freel(lc);
-
-            lc = copier_liste(l);
-            bubbles[index]->taille_liste = lc->taille;
-            tri_bubble(lc, bubbles[index]);
-            freel(lc);
-
-            lc = copier_liste(l);
-            fusions[index]->taille_liste = lc->taille;
-            freel(tri_fusion(lc, fusions[index]));
-            freel(lc);
-
-            lc = copier_liste(l);
-            quicksorts[index]->taille_liste = lc->taille;
-            quicksort(lc,0, lc->taille-1, quicksorts[index]);
-            freel(lc);
-
-            lc = copier_liste(l);
-            tass[index]->taille_liste = lc->taille;
-            freel(tri_par_tas(lc, tass[index]));
-            freel(lc);
-
-            lc = copier_liste(l);
-            peignes[index]->taille_liste = lc->taille;
-            combsort(lc, peignes[index]);
-            freel(lc);
-
-            lc = copier_liste(l);
-            shells[index]->taille_liste = lc->taille;
-            mi_shellsort_ou(lc, shells[index]);
-            freel(lc);
-
-            lc = copier_liste(l);
-            smooths[index]->taille_liste = lc->taille;
-            smoothsort(lc, smooths[index]);
-            freel(lc);
+            liste *lc = NULL;
+            for(int k = 0; k < nb_sort_func; k++){
+                lc = copier_liste(l);
+                les_tris[k][index]->taille_liste = lc->taille;
+                func_ptr[k](lc, les_tris[k][index]);
+                freel(lc);
+            }
 
             index++;
             freel(l);
@@ -1095,38 +965,15 @@ void test(int taille_mini, int nb_listes, int nb_expes, liste *(*generateur) (in
     ecriture_gnu(sttris);
     ecriture_config_gnu(sttris);
 
-    for(int i = 0; i < nb_expes * nb_listes; i++){
-        free(selections[i]);
-        free(insertions[i]);
-        free(bubbles[i]);
-        free(fusions[i]);
-        free(quicksorts[i]);
-        free(tass[i]);
-        free(peignes[i]);
-        free(shells[i]);
-        free(smooths[i]);
+    for(int k = 0; k < nb_sort_func; k++){
+        for(int i = 0; i < nb_expes * nb_listes; i++){
+            free(les_tris[k][i]);
+        }
+        free(les_tris[k]);
+        free(sttris->groupes[k]);
     }
-
-    free(selections);
-    free(insertions);
-    free(bubbles);
-    free(fusions);
-    free(quicksorts);
-    free(tass);
-    free(peignes);
-    free(shells);
-    free(smooths);
-
-    free(sgs);
-    free(sgi);
-    free(sgb);
-    free(sgf);
-    free(sgq);
-    free(sgt);
-    free(sgp);
-    free(sgsh);
-    free(sgsm);
-
+    
+    free(les_tris);
     free(sttris->groupes);
     free(sttris);
 }
@@ -1138,32 +985,34 @@ int main(int argc, char **argv){
     if(argc >= 2){
         choix = atoi(argv[1]);
     }
-    
+
+    int nb_func = 9;
+    void (*func_ptr[])(liste *l, stat *s) = {tri_par_selection, tri_par_insertion, tri_bubble, w_tri_fusion, w_tri_par_tas, w_quicksort, combsort, mi_shellsort_ou, smoothsort};
+    char *noms[] = {"Tri par Selection", "Tri par Insertion", "Tri à Bulle", "Tri Fusion", "Tri par tas", "Quicksort", "Tri à Peigne", "Tri de Shell", "Smoothsort"};
+    int taille_mini = 100;
+    int nb_listes = 10;
+    int nb_expes = 20;
+
     switch (choix) {
         case 1:
-            test(100, 10, 20, liste_entier);
+            test(taille_mini, nb_listes, nb_expes, liste_entier, nb_func, func_ptr, noms);
             break;
         case 2:
-            test(100, 10, 20, presque_triee);
+            test(taille_mini, nb_listes, nb_expes, presque_triee, nb_func, func_ptr, noms);
             break;
         case 3:
-            test(100, 10, 20, triee);
+            test(taille_mini, nb_listes, nb_expes, triee, nb_func, func_ptr, noms);
             break;
         case 4:
-            test(100, 10, 20, bcp_doublons);
+            test(taille_mini, nb_listes, nb_expes, bcp_doublons, nb_func, func_ptr, noms);
             break;
         case 5:
-            test(100, 10, 20, reverse);
+            test(taille_mini, nb_listes, nb_expes, reverse, nb_func, func_ptr, noms);
             break;
         default:
-            test(100, 10, 20, liste_entier);
+            test(taille_mini, nb_listes, nb_expes, liste_entier, nb_func, func_ptr, noms);
             break;
     }
-
-    // liste *l = liste_entier(100);
-    // smoothsort(l, init_stat());
-    // printf("%s\n", est_trie(l) == True ? "TRIEE" : "NON TRIEE");
-    // afficher_liste(l);
 
     return EXIT_SUCCESS;
 }
