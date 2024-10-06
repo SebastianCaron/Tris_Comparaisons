@@ -395,10 +395,10 @@ void ajouter_valeur(tas *t, int x, stat *s){
     int current_p = t->p - 1;
     while(current_p != 0){
         s->nb_compare++;
-        if(t->l[current_p] > t->l[current_p/2]){
+        if(t->l[current_p] > t->l[(current_p-1)/2]){
             s->nb_permutation++;
-            swap(&(t->l[current_p]), &(t->l[current_p/ 2]));
-            current_p = current_p/2;
+            swap(&(t->l[current_p]), &(t->l[(current_p-1)/ 2]));
+            current_p = (current_p-1)/2;
         }else{
             break;
         }
@@ -1013,6 +1013,7 @@ int main(int argc, char **argv){
             test(taille_mini, nb_listes, nb_expes, liste_entier, nb_func, func_ptr, noms);
             break;
     }
+
 
     return EXIT_SUCCESS;
 }
